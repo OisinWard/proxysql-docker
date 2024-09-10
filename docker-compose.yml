@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  mysql_master:
+    image: mysql:8.0
+    container_name: mysql_master
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: applicationdb
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_master_data:/var/lib/mysql
+      - ./master-init.sql:/docker-entrypoint-initdb.d/master-init.sql
+    networks:
+      - mysql_net
+    command: --server-id=1 --log-bin=mysql-bin --binlog-do-db=applicationdb --gtid-mode=ON --enforce-gtid-consistency=ON
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  mysql_replica:
+    image: mysql:8.0
+    container_name: mysql_replica
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_replica_data:/var/lib/mysql
+      - ./replica-init.sql:/docker-entrypoint-initdb.d/replica-init.sql
+    networks:
+      - mysql_net
+    depends_on:
+      - mysql_master
+    command: --server-id=2 --gtid-mode=ON --enforce-gtid-consistency=ON
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mysql_master_data:
+  mysql_replica_data:
+
+networks:
+  mysql_net:
+    driver: bridge
+
