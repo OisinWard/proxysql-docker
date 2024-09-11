@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   mysql_master:
-    image: mysql:8.0
+    image: mysql:8.0.39
     container_name: mysql_master
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
@@ -23,7 +23,7 @@ services:
     restart: unless-stopped
 
   mysql_replica:
-    image: mysql:8.0
+    image: mysql:8.0.39
     container_name: mysql_replica
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
@@ -44,9 +44,28 @@ services:
       retries: 5
     restart: unless-stopped
 
+  proxysql:
+    image: proxysql/proxysql:latest
+    container_name: proxysql
+    ports:
+      - "6033:6033"  # ProxySQL port for MySQL clients
+      - "6032:6032"  # ProxySQL admin interface
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - proxysql_data:/var/lib/proxysql
+      - ./proxysql.cnf:/etc/proxysql.cnf
+    networks:
+      - mysql_net
+    depends_on:
+      - mysql_master
+      - mysql_replica
+    restart: unless-stopped
+
 volumes:
   mysql_master_data:
   mysql_replica_data:
+  proxysql_data:
 
 networks:
   mysql_net:
